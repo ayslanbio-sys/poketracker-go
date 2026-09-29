@@ -1,0 +1,150 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#0b1020">
+<link rel="manifest" href="manifest.webmanifest">
+<title>PokéTracker GO</title>
+<style>
+:root{--bg:#080d18;--card:#111a2c;--card2:#18243b;--text:#f3f7ff;--muted:#9caac4;--line:#293753;--accent:#72a7ff;--good:#55d493;--warn:#ffd166}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--text);font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif}
+header{position:sticky;top:0;z-index:10;background:#0b1221ee;border-bottom:1px solid var(--line);backdrop-filter:blur(12px);padding:12px 14px}
+.top{max-width:1250px;margin:auto;display:flex;gap:10px;align-items:center;justify-content:space-between;flex-wrap:wrap}.logo{font-size:21px;font-weight:900}.logo span{color:var(--accent)}
+.wrap{max-width:1250px;margin:auto;padding:18px 14px 45px}
+input,select,button{font:inherit;color:var(--text);background:var(--card);border:1px solid var(--line);border-radius:11px;padding:10px 12px}button{cursor:pointer}
+.stats{display:grid;grid-template-columns:repeat(5,1fr);gap:9px}.stat{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:12px}.stat small{color:var(--muted)}.stat b{display:block;font-size:21px;margin-top:2px}
+.progress{height:6px;background:#070b13;border-radius:99px;overflow:hidden;margin-top:7px}.bar{height:100%;background:var(--accent);width:0}
+.tabs{display:flex;gap:7px;overflow:auto;padding:15px 0 10px;scrollbar-width:none}.tabs button{white-space:nowrap}.tabs .on{background:var(--accent);color:#07101c;font-weight:800}
+.controls{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px}.status{color:var(--muted);font-size:12px;margin-bottom:10px}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(190px,1fr));gap:10px}.card{background:var(--card);border:1px solid var(--line);border-radius:15px;padding:12px}.card.have{border-color:var(--good);box-shadow:0 0 0 1px #55d49322}
+.num{font-size:11px;color:var(--muted)}.name{font-weight:850;font-size:17px;margin:2px 0 6px}.form{font-size:11px;color:var(--warn);margin-bottom:7px}
+.checks{display:grid;gap:5px}label{font-size:12px;display:flex;gap:7px;align-items:center}label input{padding:0;accent-color:var(--good)}
+.section{border-top:1px solid var(--line);margin-top:10px;padding-top:9px}.empty{text-align:center;color:var(--muted);padding:35px}.loading{padding:40px;text-align:center}
+@media(max-width:760px){.stats{grid-template-columns:repeat(2,1fr)}.stats .stat:last-child{grid-column:span 2}.grid{grid-template-columns:repeat(2,1fr)}.card{padding:10px}}
+</style>
+</head>
+<body>
+<header><div class="top">
+<div class="logo">⚡ Poké<span>Tracker</span> GO</div>
+<div style="display:flex;gap:7px;flex:1;max-width:620px"><input id="search" style="flex:1" placeholder="🔎 Pokémon, número ou forma"><button id="wipe">Apagar</button></div>
+</div></header>
+<main class="wrap">
+<section class="stats">
+<div class="stat"><small>📖 Pokédex</small><b id="sDex">0/0</b><div class="progress"><div id="bar" class="bar"></div></div></div>
+<div class="stat"><small>✨ Brilhantes</small><b id="sShiny">0</b></div>
+<div class="stat"><small>🌑 Sombrosos</small><b id="sShadow">0</b></div>
+<div class="stat"><small>😇 Purificados</small><b id="sPurified">0</b></div>
+<div class="stat"><small>📏 Tamanhos</small><b id="sSizes">0</b></div>
+</section>
+<nav id="tabs" class="tabs"></nav>
+<div class="controls">
+<select id="status"><option value="all">Todos</option><option value="have">Tenho</option><option value="missing">Faltam</option></select>
+<select id="generation"><option value="all">Todas as gerações</option></select>
+<select id="subfilter"><option value="all">Todos</option><option value="base">Espécies</option><option value="forms">Formas</option></select>
+</div>
+<div id="statusText" class="status"></div>
+<section id="grid" class="grid"><div class="loading">Carregando dados do Pokémon GO…</div></section>
+</main>
+<script>
+const API='https://raw.githubusercontent.com/WatWowMap/pogo-data-api/main/data/v1/';
+const cats={
+dex:'📖 Pokédex', shiny:'✨ Brilhantes', shadow:'🌑 Sombrosos', purified:'😇 Purificados', lucky:'🍀 Sortudos',
+hundo:'💯 100% IV', mega:'🔥 Mega', dynamax:'🌀 Dynamax', gigamax:'👑 Gigamax', costume:'🎭 Fantasias',
+regional:'🌎 Regionais', unown:'🔤 Unown', legendary:'⭐ Lendários', mythical:'🔮 Míticos', ultra:'👽 Ultracriaturas',
+xxs:'🟢 XXS', xs:'🔵 XS', normalSize:'⚪ Normal', xl:'🟠 XL', xxl:'🔴 XXL'
+};
+let mons=[],forms=[],costumes=[],state=JSON.parse(localStorage.getItem('poketracker_v3')||'{}'),cat='dex';
+
+const tabs=document.getElementById('tabs');
+Object.entries(cats).forEach(([k,v])=>{let b=document.createElement('button');b.textContent=v;b.dataset.k=k;b.onclick=()=>{cat=k;render()};tabs.appendChild(b)});
+
+const key=(id,c)=>id+'|'+c;
+const get=(id,c)=>!!state[key(id,c)];
+function save(id,c,val){if(val)state[key(id,c)]=1;else delete state[key(id,c)];localStorage.setItem('poketracker_v3',JSON.stringify(state));render()}
+
+function escapeHtml(s){return String(s).replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]))}
+function formLabel(f){
+  return f.formName || f.form || f.name || '';
+}
+function isSpecialForm(f){
+  const n=(formLabel(f)||'').toLowerCase();
+  return n && !['normal','default'].includes(n);
+}
+function recordList(){
+  const byId=new Map(mons.map(m=>[m.pokedexId,m]));
+  let out=[];
+  mons.forEach(m=>{
+    const fids=new Set(m.forms||[]);
+    const related=forms.filter(f=>fids.has(f.formId));
+    if(related.length) related.forEach(f=>out.push({m,f}));
+    else out.push({m,f:null});
+  });
+  return out;
+}
+function applicable(r){
+ const m=r.m,f=r.f,n=(formLabel(f)||'').toLowerCase();
+ if(cat==='dex') return !f || f.formId===m.defaultFormId;
+ if(cat==='legendary') return !!m.legendary;
+ if(cat==='mythical') return !!m.mythic;
+ if(cat==='ultra') return !!m.ultraBeast;
+ if(cat==='mega') return (m.tempEvolutions||[]).length>0 || n.includes('mega') || n.includes('primal');
+ if(cat==='gigamax') return n.includes('gigantamax') || n.includes('gigamax');
+ if(cat==='regional') return ['alola','galar','hisui','paldea'].some(x=>n.includes(x));
+ if(cat==='unown') return m.pokedexId===201;
+ if(cat==='costume') return !!(f && (f.costumeId||f.costumeName)) || (costumes.some(c=>c.pokemonId===m.pokedexId));
+ if(cat==='dynamax') return n.includes('dynamax') || n.includes('gigantamax') || (m.tempEvolutions||[]).length>0;
+ if(['shiny','shadow','purified','lucky','hundo','xxs','xs','normalSize','xl','xxl'].includes(cat)) return !f || f.formId===m.defaultFormId;
+ return true;
+}
+function displayId(r){return r.f?.formId ? r.m.pokedexId+'-'+r.f.formId : r.m.pokedexId}
+function title(r){return r.m.pokemonName}
+function cardChecks(r){
+ const id=displayId(r);
+ if(cat==='dex') return `
+ <div class="checks">
+  <label><input type="checkbox" ${get(id,'dex')?'checked':''} onchange="save('${id}','dex',this.checked)"> Tenho</label>
+  <div class="section"><div class="form">Tamanhos</div>
+  ${['xxs','xs','normalSize','xl','xxl'].map(c=>`<label><input type="checkbox" ${get(id,c)?'checked':''} onchange="save('${id}','${c}',this.checked)"> ${cats[c]}</label>`).join('')}
+ </div></div>`;
+ return `<div class="checks"><label><input type="checkbox" ${get(id,cat)?'checked':''} onchange="save('${id}','${cat}',this.checked)"> Tenho</label></div>`;
+}
+function render(){
+ tabs.querySelectorAll('button').forEach(b=>b.classList.toggle('on',b.dataset.k===cat));
+ const q=document.getElementById('search').value.toLowerCase().trim(), st=document.getElementById('status').value;
+ const gen=document.getElementById('generation').value, sub=document.getElementById('subfilter').value;
+ let arr=recordList().filter(r=>(!q||title(r).toLowerCase().includes(q)||String(r.m.pokedexId)===q||formLabel(r.f).toLowerCase().includes(q)) && (gen==='all'||String(r.m.genId)===gen) && applicable(r));
+ if(sub==='base')arr=arr.filter(r=>!r.f||r.f.formId===r.m.defaultFormId);
+ if(sub==='forms')arr=arr.filter(r=>r.f&&r.f.formId!==r.m.defaultFormId);
+ if(st!=='all')arr=arr.filter(r=>st==='have'?get(displayId(r),cat):!get(displayId(r),cat));
+ const grid=document.getElementById('grid');grid.innerHTML='';
+ if(!arr.length){grid.innerHTML='<div class="empty">Nenhum registro encontrado nesta categoria.</div>'}
+ arr.slice(0,1500).forEach(r=>{
+  const c=document.createElement('article');const id=displayId(r);c.className='card '+(get(id,cat)?'have':'');
+  c.innerHTML=`<div class="num">#${String(r.m.pokedexId).padStart(4,'0')}</div><div class="name">${escapeHtml(title(r))}</div>${r.f&&isSpecialForm(r.f)?`<div class="form">${escapeHtml(formLabel(r.f))}</div>`:''}${cardChecks(r)}`;
+  grid.appendChild(c);
+ });
+ document.getElementById('statusText').textContent=`${arr.length} registros • dados carregados da base pública do Pokémon GO`;
+ update();
+}
+function update(){
+ const base=mons.length, dex=mons.filter(m=>get(m.pokedexId,'dex')).length;
+ document.getElementById('sDex').textContent=`${dex}/${base}`;document.getElementById('bar').style.width=(base?dex/base*100:0)+'%';
+ ['shiny','shadow','purified'].forEach(c=>document.getElementById('s'+c[0].toUpperCase()+c.slice(1)).textContent=mons.filter(m=>get(m.pokedexId,c)).length);
+ document.getElementById('sSizes').textContent=Object.keys(state).filter(k=>/\\|(xxs|xs|normalSize|xl|xxl)$/.test(k)).length;
+}
+async function load(){
+ try{
+  const [p,f,c]=await Promise.all([fetch(API+'pokemon.json'),fetch(API+'forms.json'),fetch(API+'costumes.json')]);
+  mons=await p.json();forms=await f.json();costumes=await c.json();
+  const gens=[...new Set(mons.map(x=>x.genId).filter(Boolean))].sort((a,b)=>a-b);
+  gens.forEach(g=>{let o=document.createElement('option');o.value=g;o.textContent='Geração '+g;document.getElementById('generation').appendChild(o)});
+  render();
+ }catch(e){document.getElementById('grid').innerHTML='<div class="empty">Não foi possível carregar os dados. Verifique sua internet e abra novamente.</div>'}
+}
+document.getElementById('search').oninput=render;document.getElementById('status').onchange=render;document.getElementById('generation').onchange=render;document.getElementById('subfilter').onchange=render;
+document.getElementById('wipe').onclick=()=>{if(confirm('Apagar toda a coleção salva neste aparelho?')){state={};localStorage.removeItem('poketracker_v3');render()}};
+if('serviceWorker' in navigator) window.addEventListener('load',()=>navigator.serviceWorker.register('sw.js').catch(()=>{}));
+load();
+</script>
+</body></html>
