@@ -1,0 +1,1 @@
+PokéTracker GO v4 — contador corrigido, quantidades, +/- , tamanhos por quantidade, cards com imagens e busca/filtros.
