@@ -1,1 +1,0 @@
-PokéTracker GO v4.2 — backup e restauração da coleção em JSON, além dos recursos da v4.1.
