@@ -1,1 +1,0 @@
-PokéTracker GO v4.1 — contador corrigido, quantidades, +/-, tamanhos por quantidade, cards com imagens, busca/filtros, IV 0%, e separação entre Pokémon regionais geográficos e formas regionais.
