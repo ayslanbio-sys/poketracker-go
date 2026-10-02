@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Pokémon GO Collection Tracker</title>
+  <link rel="stylesheet" href="style.css">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body>
+  <div class="app-container">
+    <header class="app-header">
+      <div class="logo-area">
+        <div class="pokeball-icon"></div>
+        <h1>PokéCollection <span>Tracker</span></h1>
+      </div>
+      <div class="backup-actions">
+        <button id="btn-export" class="btn btn-secondary">Exportar Backup</button>
+        <label for="file-import" class="btn btn-primary">Importar Backup</label>
+        <input type="file" id="file-import" accept=".json" style="display: none;">
+      </div>
+    </header>
+
+    <nav class="nav-tabs">
+      <button class="tab-btn active" data-tab="dashboard">Dashboard</button>
+      <button class="tab-btn" data-tab="kanto">Kanto</button>
+      <button class="tab-btn" data-tab="johto">Johto</button>
+      <button class="tab-btn" data-tab="hoenn">Hoenn</button>
+      <button class="tab-btn" data-tab="sinnoh">Sinnoh</button>
+      <button class="tab-btn" data-tab="unova">Unova</button>
+      <button class="tab-btn" data-tab="kalos">Kalos</button>
+      <button class="tab-btn" data-tab="alola">Alola</button>
+      <button class="tab-btn" data-tab="galar">Galar</button>
+      <button class="tab-btn" data-tab="paldea">Paldea</button>
+    </nav>
+
+    <main class="content-area">
+      <section id="dashboard" class="tab-content active">
+        <h2 class="section-title">Estatísticas da Coleção</h2>
+        <div class="metrics-grid">
+          <div class="metric-card total"><span class="metric-title">Total Registrado</span><span class="metric-value" id="stat-total">0</span></div>
+          <div class="metric-card shiny"><span class="metric-title">Brilhantes ✨</span><span class="metric-value" id="stat-shiny">0</span></div>
+          <div class="metric-card hundo"><span class="metric-title">100% IV 💯</span><span class="metric-value" id="stat-hundo">0</span></div>
+          <div class="metric-card nondo"><span class="metric-title">0% IV 🔴</span><span class="metric-value" id="stat-nondo">0</span></div>
+          <div class="metric-card lucky"><span class="metric-title">Sortudos 🍀</span><span class="metric-value" id="stat-lucky">0</span></div>
+          <div class="metric-card shadow"><span class="metric-title">Sombrios 😈</span><span class="metric-value" id="stat-shadow">0</span></div>
+          <div class="metric-card purified"><span class="metric-title">Purificados ✨</span><span class="metric-value" id="stat-purified">0</span></div>
+          <div class="metric-card regional"><span class="metric-title">Regionais 🌍</span><span class="metric-value" id="stat-regional">0</span></div>
+        </div>
+
+        <div class="charts-grid">
+          <div class="chart-card"><h3>Progresso por Região</h3><div class="chart-wrapper"><canvas id="regionChart"></canvas></div></div>
+          <div class="chart-card"><h3>Distribuição de Variantes</h3><div class="chart-wrapper"><canvas id="variantChart"></canvas></div></div>
+        </div>
+      </section>
+
+      <section id="region-view" class="tab-content">
+        <div class="list-controls">
+          <div class="search-box"><input type="text" id="search-input" placeholder="Buscar por nome ou ID..."></div>
+          <div class="filter-box">
+            <select id="filter-select">
+              <option value="all">Todos</option>
+              <option value="owned">Possuídos</option>
+              <option value="shiny">Brilhantes ✨</option>
+              <option value="hundo">100% 💯</option>
+              <option value="nondo">0% 🔴</option>
+              <option value="lucky">Sortudos 🍀</option>
+              <option value="regional">Regionais 🌍</option>
+            </select>
+          </div>
+        </div>
+        <div id="pokemon-grid" class="pokemon-grid"></div>
+      </section>
+    </main>
+  </div>
+
+  <script src="data/pokemons.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>
