@@ -1,0 +1,140 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#111827">
+<link rel="manifest" href="manifest.json">
+<title>Pokémon GO Tracker</title>
+<style>
+*{box-sizing:border-box}body{margin:0;font-family:system-ui,-apple-system,Segoe UI,sans-serif;background:#0b1020;color:#f5f7fb;padding-bottom:78px}
+header{position:sticky;top:0;z-index:5;background:#111827ee;backdrop-filter:blur(12px);padding:14px 16px;border-bottom:1px solid #263148}
+h1{font-size:21px;margin:0}.sub{font-size:12px;color:#9ca3af;margin-top:3px}
+main{max-width:900px;margin:auto;padding:14px}
+nav{position:fixed;bottom:0;left:0;right:0;background:#111827;border-top:1px solid #263148;display:flex;justify-content:space-around;z-index:10;padding:8px 4px calc(8px + env(safe-area-inset-bottom))}
+nav button{background:none;border:0;color:#9ca3af;font-size:11px;min-width:20%;padding:5px}nav button.active{color:#fff;font-weight:700}
+.page{display:none}.page.active{display:block}.grid{display:grid;grid-template-columns:repeat(2,1fr);gap:10px}.card{background:#151d2e;border:1px solid #263148;border-radius:15px;padding:14px}.big{font-size:25px;font-weight:800}.muted{color:#9ca3af;font-size:12px}.progress{height:8px;background:#293449;border-radius:99px;overflow:hidden;margin-top:8px}.progress i{display:block;height:100%;background:#60a5fa;border-radius:99px}
+.controls{display:grid;gap:9px;margin-bottom:12px}input,select,button.action{width:100%;border:1px solid #334155;border-radius:11px;padding:12px;background:#111827;color:#fff;font-size:15px}button.action{background:#2563eb;border:0;font-weight:700}.secondary{background:#263148!important}
+.list{display:grid;gap:9px}.pokemon{background:#151d2e;border:1px solid #263148;border-radius:15px;padding:12px;display:grid;grid-template-columns:52px 1fr auto;gap:10px;align-items:center}.sprite{width:52px;height:52px;background:#0d1423;border-radius:12px;object-fit:contain}.pname{font-weight:700}.tag{font-size:10px;background:#263148;padding:3px 6px;border-radius:99px;color:#cbd5e1}
+.qty{width:62px!important;text-align:center;padding:9px!important}.chips{display:flex;flex-wrap:wrap;gap:5px;margin-top:6px}.chip{font-size:11px;background:#202b40;border-radius:7px;padding:5px 7px}.row{display:flex;gap:7px;align-items:center}.row>*{flex:1}
+.notice{padding:12px;border-radius:12px;background:#182238;color:#cbd5e1;font-size:13px;margin-bottom:12px}
+@media(min-width:700px){.grid{grid-template-columns:repeat(4,1fr)}nav{position:static;max-width:900px;margin:0 auto;background:transparent;border:0}main{padding-top:20px}}
+</style>
+</head>
+<body>
+<header><h1>⚡ Pokémon GO Tracker</h1><div class="sub">Sua coleção • funciona no celular e PC</div></header>
+<main>
+<section id="dashboard" class="page active">
+<div class="notice">Seus dados ficam salvos neste aparelho. Use <b>Backup</b> para guardar uma cópia e restaurar depois.</div>
+<div class="grid">
+<div class="card"><div class="muted">Pokémon com registro</div><div class="big" id="ownedCount">0 / 1025</div><div class="progress"><i id="ownedBar" style="width:0%"></i></div></div>
+<div class="card"><div class="muted">Total de exemplares</div><div class="big" id="totalQty">0</div></div>
+<div class="card"><div class="muted">✨ Shiny</div><div class="big" id="shinyTotal">0</div></div>
+<div class="card"><div class="muted">👻 Shadow</div><div class="big" id="shadowTotal">0</div></div>
+<div class="card"><div class="muted">⬆️ XXL</div><div class="big" id="xxlTotal">0</div></div>
+<div class="card"><div class="muted">⬇️ XXS</div><div class="big" id="xxsTotal">0</div></div>
+<div class="card"><div class="muted">♂️ Macho</div><div class="big" id="maleTotal">0</div></div>
+<div class="card"><div class="muted">♀️ Fêmea</div><div class="big" id="femaleTotal">0</div></div>
+</div>
+<h2>Regiões</h2><div id="regions" class="list"></div>
+</section>
+
+<section id="pokedex" class="page">
+<div class="controls">
+<input id="search" placeholder="🔎 Buscar Pokémon por nome ou número">
+<select id="regionFilter"><option value="">Todas as regiões</option><option value="Kanto">Kanto</option><option value="Johto">Johto</option><option value="Hoenn">Hoenn</option><option value="Sinnoh">Sinnoh</option><option value="Unova">Unova</option><option value="Kalos">Kalos</option><option value="Alola">Alola</option><option value="Galar">Galar</option><option value="Hisui">Hisui</option><option value="Paldea">Paldea</option></select>
+<select id="statusFilter"><option value="">Todos</option><option value="owned">Tenho</option><option value="missing">Faltam</option></select>
+</div>
+<div id="list" class="list"></div>
+</section>
+
+<section id="backup" class="page">
+<div class="card">
+<h2>💾 Backup</h2>
+<p class="muted">Exporte sua coleção para um arquivo JSON. Guarde esse arquivo em um local seguro.</p>
+<div class="list">
+<button class="action" id="exportBtn">⬇️ Fazer backup</button>
+<label class="action secondary" style="text-align:center;cursor:pointer">⬆️ Restaurar backup<input id="importFile" type="file" accept=".json" hidden></label>
+<button class="action secondary" id="clearBtn">🗑️ Zerar coleção</button>
+</div>
+</div>
+<div class="notice" style="margin-top:12px">O backup contém somente os dados que você marcou. A lista de Pokémon é carregada separadamente.</div>
+</section>
+</main>
+<nav>
+<button class="active" data-page="dashboard">🏠<br>Início</button>
+<button data-page="pokedex">📖<br>Pokédex</button>
+<button data-page="backup">💾<br>Backup</button>
+</nav>
+
+<script>
+const KEY='pogoTrackerCollectionV2';
+const regions=[
+['Kanto',1,151],['Johto',152,251],['Hoenn',252,386],['Sinnoh',387,493],
+['Unova',494,649],['Kalos',650,721],['Alola',722,809],['Galar',810,905],
+['Hisui',387,905],['Paldea',906,1025]
+];
+let pokemons=[], data=JSON.parse(localStorage.getItem(KEY)||'{}');
+
+function save(){localStorage.setItem(KEY,JSON.stringify(data));renderDashboard()}
+function regionOf(id){if(id<=151)return'Kanto';if(id<=251)return'Johto';if(id<=386)return'Hoenn';if(id<=493)return'Sinnoh';if(id<=649)return'Unova';if(id<=721)return'Kalos';if(id<=809)return'Alola';if(id<=905)return'Galar';return'Paldea'}
+function rec(id){return data[id] ||= {qty:0,shiny:0,shadow:0,xxl:0,xxs:0,male:0,female:0,lucky:0,four:0,regional:0}}
+
+async function load(){
+  const cache=localStorage.getItem('pogoNamesV1');
+  if(cache) pokemons=JSON.parse(cache);
+  if(!pokemons.length){
+    try{
+      const r=await fetch('https://pokeapi.co/api/v2/pokemon-species?limit=1025');
+      const j=await r.json();
+      pokemons=j.results.map((x,i)=>({id:i+1,name:x.name,region:regionOf(i+1)}));
+      localStorage.setItem('pogoNamesV1',JSON.stringify(pokemons));
+    }catch(e){
+      pokemons=Array.from({length:1025},(_,i)=>({id:i+1,name:'Pokémon #'+(i+1),region:regionOf(i+1)}));
+    }
+  }
+  renderList();renderDashboard();
+}
+function renderDashboard(){
+  const owned=Object.values(data).filter(x=>x.qty>0).length;
+  const sum=k=>Object.values(data).reduce((a,x)=>a+(+x[k]||0),0);
+  document.getElementById('ownedCount').textContent=owned+' / 1025';
+  document.getElementById('ownedBar').style.width=(owned/1025*100)+'%';
+  document.getElementById('totalQty').textContent=sum('qty');
+  ['shiny','shadow','xxl','xxs','male','female'].forEach(k=>document.getElementById(k+'Total').textContent=sum(k));
+  document.getElementById('regions').innerHTML=regions.filter((r,i)=>r[0]!=='Hisui').map(r=>{
+    const ids=pokemons.filter(p=>p.region===r[0]).map(p=>p.id);
+    const n=ids.filter(id=>rec(id).qty>0).length;
+    const pct=ids.length?Math.round(n/ids.length*100):0;
+    return `<div class="card"><div class="row"><b>${r[0]}</b><span class="muted">${n}/${ids.length||r[2]-r[1]+1} • ${pct}%</span></div><div class="progress"><i style="width:${pct}%"></i></div></div>`
+  }).join('');
+}
+function renderList(){
+  const q=(document.getElementById('search')?.value||'').toLowerCase();
+  const rf=document.getElementById('regionFilter')?.value||'';
+  const sf=document.getElementById('statusFilter')?.value||'';
+  const arr=pokemons.filter(p=>(!q||p.name.includes(q)||String(p.id).includes(q))&&(!rf||p.region===rf)&&(!sf||(sf==='owned'?rec(p.id).qty>0:rec(p.id).qty===0))).slice(0,250);
+  document.getElementById('list').innerHTML=arr.map(p=>{
+    const x=rec(p.id);
+    return `<div class="pokemon">
+      <img class="sprite" loading="lazy" src="https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/${p.id}.png">
+      <div><div class="pname">#${String(p.id).padStart(3,'0')} ${cap(p.name)}</div><div class="chips"><span class="tag">${p.region}</span>${x.shiny?'<span class="chip">✨ '+x.shiny+'</span>':''}${x.shadow?'<span class="chip">👻 '+x.shadow+'</span>':''}</div></div>
+      <input class="qty" type="number" min="0" value="${x.qty}" data-id="${p.id}" title="Quantidade total">
+    </div>`
+  }).join('');
+  document.querySelectorAll('.qty').forEach(el=>el.addEventListener('change',e=>{rec(+e.target.dataset.id).qty=Math.max(0,+e.target.value||0);save()}));
+}
+function cap(s){return s.replace(/-/g,' ').replace(/\b\w/g,c=>c.toUpperCase())}
+document.querySelectorAll('nav button').forEach(b=>b.onclick=()=>{document.querySelectorAll('nav button').forEach(x=>x.classList.remove('active'));b.classList.add('active');document.querySelectorAll('.page').forEach(x=>x.classList.remove('active'));document.getElementById(b.dataset.page).classList.add('active');if(b.dataset.page==='pokedex')renderList()});
+['search','regionFilter','statusFilter'].forEach(id=>document.getElementById(id).addEventListener('input',renderList));
+document.getElementById('exportBtn').onclick=()=>{
+ const blob=new Blob([JSON.stringify({version:2,exportedAt:new Date().toISOString(),collection:data},null,2)],{type:'application/json'});
+ const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='pokemon-go-backup-'+new Date().toISOString().slice(0,10)+'.json';a.click();URL.revokeObjectURL(a.href)
+};
+document.getElementById('importFile').onchange=e=>{
+ const f=e.target.files[0];if(!f)return;const r=new FileReader();r.onload=()=>{try{const j=JSON.parse(r.result);data=j.collection||j;save();renderList();alert('Backup restaurado!')}catch{alert('Arquivo de backup inválido.')}};r.readAsText(f)
+};
+document.getElementById('clearBtn').onclick=()=>{if(confirm('Tem certeza? Isso apaga a coleção deste aparelho. Faça um backup antes.')){data={};save();renderList()}};
+load();
+</script>
+</body></html>
